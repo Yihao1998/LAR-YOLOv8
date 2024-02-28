@@ -1,0 +1,60 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+# LAR-YOLOv8 object detection model. For Usage examples see https://docs.ultralytics.com/tasks/detect
+
+# Parameters
+nc: 10  # number of classes
+scales:
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
+fusion_mode: bifpn
+node_mode: C2f
+head_channel: 256
+
+# YOLOv8.0n backbone
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]]
+  - [-1, 1, Conv, [128, 3, 2]]
+  - [-1, 3, C2f, [128, True]]
+  - [-1, 1, Conv, [256, 3, 2]]
+  - [-1, 1, C2f_CloAtt, [256, True]]
+  - [-1, 1, Conv, [512, 3, 2]]
+  - [-1, 1, C2f_CloAtt, [512, True]]
+  - [-1, 1, Conv, [1024, 3, 2]]
+  - [-1, 3, C2f, [1024, True]]
+  - [-1, 1, SPPF, [1024, 5]]
+  - [-1, 1, C3TR, [1024, Ture]]
+# YOLOv8.0n head
+head:
+  - [ 4, 1, Conv, [ head_channel ] ]
+  - [ 6, 1, Conv, [ head_channel ] ]
+  - [ 10, 1, Conv, [ head_channel ] ]
+
+  - [ -1, 1, nn.Upsample, [ None, 2, 'nearest' ] ]
+  - [ [ -1, 12 ], 1, Fusion, [ fusion_mode ] ]
+  - [ -1, 3, node_mode, [ head_channel ] ]
+
+  - [ -1, 1, nn.Upsample, [ None, 2, 'nearest' ] ]
+  - [ [ -1, 11 ], 1, Fusion, [ fusion_mode ] ]
+  - [ -1, 3, node_mode, [ head_channel ] ]
+
+  - [ 2, 1, Conv, [ head_channel, 3, 2 ] ]
+  - [-1, 1, BiLevelRoutingAttention, [8, 7]] # Bi-Att
+
+  - [ [ -1, 11, 19 ], 1, Fusion, [ fusion_mode ] ]
+  - [ -1, 3, node_mode, [ head_channel ] ]
+
+  - [ -1, 1, Conv, [ head_channel, 3, 2 ] ]
+  - [ [ -1, 12, 16 ], 1, Fusion, [ fusion_mode ] ]
+  - [ -1, 3, node_mode, [ head_channel ] ]
+
+  - [ -1, 1, Conv, [ head_channel, 3, 2 ] ]
+  - [ [ -1, 13 ], 1, Fusion, [ fusion_mode ] ]
+  - [ -1, 3, node_mode, [ head_channel ] ]
+
+
+  - [ [ 21, 23, 26, 29], 1, Detect, [ nc ] ]  # Detect
